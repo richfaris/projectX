@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>projectMaui</title> 
+    <link rel="stylesheet" href="styles.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  </head>
+  <body>
+    <div class="container">
+      <h2 class="title">projectMaui</h1>
+      <form>        
+        <div class="row">
+          <div class="col-xs-6">
+              <input class="btn btn-success btn-sm" onclick="garageLightToggle()" value="garageLightTBD"></div>
+          <div class="col-xs-3">
+              <img src="garageLightXYZZY" alt="Light" style="width:40px;height:40px;"></div>
+        </div>  
+        <div class="row">
+          <div class="col-xs-6">
+             <input class="btn btn-success btn-sm" onclick="frontLightToggle()" value="frontLight"></div>
+          <div class="col-xs-3"> <img src="frontLightXYZZY" alt="Light" style="width:40px;height:40px;"></div>
+        </div>        
+          <h3 class="header">Curfew Begin</h3>
+        <div class="row">
+          <div class="form-group col-xs-3">
+              <label for="nighthour">Hour</label>
+              <select id="nighthour" name="nighthour" class="form-control"></select>
+            </div>
+            <div class="form-group col-xs-3">
+              <label for="nightminute">Minute</label>
+              <select id="nightminute" name="nightminute" class="form-control"></select>
+            </div>       
+        </div> 
+    <h3 class="header">Curfew End</h3>
+        <div class="row">
+          <div class="form-group col-xs-3">
+              <label for="morninghour">Hour</label>
+              <select id="morninghour" name="morninghour" class="form-control"></select>
+            </div>
+            <div class="form-group col-xs-3">
+              <label for="morningminute">Minute</label>
+              <select id="morningminute" name="morningminute" class="form-control"></select>
+            </div>        
+        <div class="form-group col-xs-3">
+        <label>Go</label>
+          <input class="form-control btn btn-success" type="submit" value="Set">
+        </div>
+        </div>
+      </form>       
+<div class="page-header">
+<h3>Environment</h3> </div>     
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Sensor</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Temperature (deg F)</td>
+                  <td>tempNowXYZZY</td>
+                </tr>
+                <tr>
+                  <td>MyIpAddress</td>
+                  <td>ipNowXYZZY</td>
+                </tr>             
+              </tbody>
+            </table>
+    </div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+
+var   nighthour = document.getElementById("nighthour"),
+      nightminute = document.getElementById("nightminute"),     
+      morninghour = document.getElementById("morninghour"),
+      morningminute = document.getElementById("morningminute");
+      
+      function option(num) {
+        var opt = document.createElement("option");
+        opt.setAttribute("value", num);
+        opt.text = num.toString();
+        return opt;
+      }
+      function range(start, end) {
+        var arr = [start];
+        start++;
+        while(start <= end) {
+          arr.push(start);
+          start++;
+        }
+        return arr;
+      }
+      function setCurfew(req) {
+        var json;
+        try {
+          json = JSON.parse(this.response);
+        } catch (e) {
+          console.log("Client BROWSER error in JSON parsing");
+          return; // unable to parse JSON, something went wrong
+        }
+        nighthour.value = json.nighthour;
+        nightminute.value = json.nightminute;
+        morninghour.value = json.morninghour;
+        morningminute.value = json.morningminute;
+        
+        console.log("in client setCurfew nighthour ", nighthour.value, " minute ", nightminute.value);
+        console.log("in client setCurfew morninghour ", morninghour.value, " minute ", morningminute.value);
+      }
+
+      function fetch() {
+        var req = new XMLHttpRequest();
+        req.addEventListener("load", setCurfew);
+        req.open("get", "/curfew.json", true);
+        req.send();
+      }
+
+      function curfew_main() {
+        range(0, 23).map(option).forEach(function(opt) { nighthour.add(opt); });
+        range(0, 59).map(option).forEach(function(opt) { nightminute.add(opt); });
+        range(0, 23).map(option).forEach(function(opt) { morninghour.add(opt); });
+        range(0, 59).map(option).forEach(function(opt) { morningminute.add(opt); });
+        fetch();
+      }
+  
+curfew_main();
+
+var socket = io('http://192.168.1.61:3000');
+//  var currentTemp;
+  
+socket.on('reload', function (data) {
+    console.log("client just got reload request ", data);
+    location.reload();
+  });
+
+
+// implement button press
+function frontLightToggle() {
+  console.log("entering frontLightToggle client");
+  socket.emit('frontLightToggle', { frontLightToggle: 'toggle' });
+};
+
+// implement button press
+  function garageLightToggle() {
+    console.log("entering garageLightToggle client not implemented yet");
+//    socket.emit('garageLightToggle', { garageLightToggle: 'toggle' });
+};
+</script>
+</body>
+</html>
