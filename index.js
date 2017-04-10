@@ -52,12 +52,10 @@ if (config.kit) {
 }
 board.init(config);
 
-
 var datastore = require("./datastore");
 var mqtt = require("./mqtt");
 
 // State of the system
-
 var night, morning;
 night = moment();
 morning = moment();
@@ -67,16 +65,16 @@ if (verboseDebug) console.log("Initial values for night ",night," morning ",morn
 //
 
 var mraa = require("mraa");
-var frontLight = new mraa.Gpio(8);
-frontLight.dir(mraa.DIR_OUT);
+var myLight = new mraa.Gpio(8);
+myLight.dir(mraa.DIR_OUT);
 
-var frontSW = new mraa.Gpio(4);
-frontSW.dir(mraa.DIR_IN);
-var frontSWState = 0, frontSWNew = 0, frontLightOn = 0;
+var mySW = new mraa.Gpio(4);
+mySW.dir(mraa.DIR_IN);
+var mySWState = 0, mySWNew = 0, myLightOn = 0;
 // I need to add a call to other board to get proper state of second light
-var garageLightOn = 0;  
-var garageBoardClient = require("socket.io-client");
-var socketgarageBoard = garageBoardClient.connect("http://192.168.1.182:3000");
+var hisLightOn = 0;  
+var hisBoardClient = require("socket.io-client");
+var hisSocket = hisBoardClient.connect("http://192.168.1.182:3000");
 
 
 // get my ip address
@@ -118,32 +116,39 @@ function startClockLoop() {
 //  if (after(time, nightoff)) { Start Night Off time ;}
 //  if (after(time, morningon)) {turn off night handling }
 
-
     board.message("T "+time.format("h:mm:ss A"),0);
     board.message("IP "+ipAddress,1);
 //    board.message("O "+night.format("h.mm A ")+morning.format("h.mm A"),1);  
-    frontSWNew = frontSW.read();
+    mySWNew = mySW.read();
     reads+=1;
 
-
     if (verboseDebug && (reads == chatterCount)) {
-       console.log("In startClockLoop: reading switch frontSWNew ", frontSWNew, " frontSWState ", frontSWState);
-    reads = 0;
-    }
-    if (frontSWNew != frontSWState) {
-       if (frontSWNew == 1) {
-         frontLightOn = 1;
-         frontLight.write(1);
-        board.color("yellow");
-        socketgarageBoard.emit('garageLightOn', { garageLightOn: 'toggle' });
-  // socket.emit reload web page
-      } else { frontLightOn = 0;
-        frontLight.write(0);
+       console.log("In startClockLoop: reading switch mySWNew ", mySWNew, " mySWState ", mySWState);
+       reads = 0; };
+    if (mySWNew != mySWState) {
+       if (mySWNew == 1) {
+         myLightOn = 1;
+         myLight.write(1);
+         board.color("yellow");
+//        hisSocket.emit('myLightOn', { hisLightOn: 'toggle' });
+         hisSocket.emit('myLightOn', { myLightOn: 'toggle' }, function(confData) {
+         if (confData) console.log("In server, controlling other server Return socket.emit status from myLightOn ",confData);
+            else console.log("In client Return socket.emit status for myLightToggle FAIL ",confData);
+         });
+       
+  // mySocket.emit reload web page
+} else { 
+        myLightOn = 0;
+        myLight.write(0);
         board.color("red");
-        socketgarageBoard.emit('garageLightOff', { garageLightOff: 'toggle' });
-      }
+//      hisSocket.emit('myLightOff', { hisLightOff: 'toggle' });
+        hisSocket.emit('myLightToggle', { myLightOff: 'toggle' }, function(confData) {
+        if (confData) console.log("In client Return socket.emit status from myLightOff ",confData);
+           else console.log("In client Return socket.emit status for myLightOff FAIL ",confData);
+      });
 }
-    frontSWState = frontSWNew;
+}
+    mySWState = mySWNew;
 }, 200 );
 } 
 // TODO rich should I change the granularity to more coarse?
@@ -157,9 +162,6 @@ function logging(duration) {
   datastore.log(config, payload);
   mqtt.log(config, payload);
 }
-
-
-
 
 var tempF = 999.9;
 
@@ -240,17 +242,17 @@ function index(res) {
       var tempShort = tempString.substr(0,4);
       if (err) { return console.log(err); }
           r1 = data.replace(/tempNowXYZZY/, tempShort );
-    if (frontLightOn) {
-        r2 = r1.replace(/frontLightXYZZY/, "BulbOn.jpg" ); 
+    if (myLightOn) {
+        r2 = r1.replace(/myLightXYZZY/, "BulbOn.jpg" ); 
          }
     else {
-        r2 = r1.replace(/frontLightXYZZY/, "BulbOff.jpg" ); 
+        r2 = r1.replace(/myLightXYZZY/, "BulbOff.jpg" ); 
          };
-    if (garageLightOn) {
-        r3 = r2.replace(/garageLightXYZZY/, "BulbOn.jpg" ); 
+    if (hisLightOn) {
+        r3 = r2.replace(/hisLightXYZZY/, "BulbOn.jpg" ); 
          }
     else {
-        r3 = r2.replace(/garageLightXYZZY/, "BulbOff.jpg" ); 
+        r3 = r2.replace(/hisLightXYZZY/, "BulbOff.jpg" ); 
          };
         r4 = r3.replace(/ipNowXYZZY/, ipAddress );
         result = r4;
@@ -265,7 +267,7 @@ function index(res) {
 //
 app.get('/', function (req, res) {
     var params = req.query;
-    if (verboseDebug) console.log("Entering app.get slash", night, morning);
+    if (verboseDebug) console.log("Entering app.get slash night ", night, " morning ",morning);
 
 
 // first set time baseline to NOW
@@ -284,14 +286,7 @@ app.get('/', function (req, res) {
     morning.minute(+params.morningminute);
     morning.add(1, "day");
 
-    if (verboseDebug) console.log("Almost leaving app.get slash", night, morning);
-  
-
-
-//    if (time.isBefore(moment())) {
-//      time.add(1, "day");
-//    }
-//    alarm = time;
+    if (verboseDebug) console.log("Almost leaving app.get slash night ", night, " morning ",morning);
 
     index(res);
 });
@@ -338,45 +333,51 @@ if ((night.hour() == 0)  || (morning.hour() == 0 )) { return res.json({ nighthou
     if (verboseDebug) console.log("in res.json morning.minute ", morning.minute() );
 };
 
-app.get('/curfew.json', json );
+app.get('/curfew.json', json);
 
 server.listen(3000);
 
 // this section communicates with the webui(s) that want to talk
 
-io.on('connection', function (socket) {
+io.on('connection', function (mySocket) {
 
-socket.on('frontLightToggle', function(data) {
-    console.log("in server got frontLightToggle message ",data);
-    frontLightOn = !frontLightOn;
-    console.log("In server socket, frontLight now ", frontLightOn);
-    if (frontLightOn == 1) 
-      { frontLight.write(1); board.color("yellow") }
+
+
+mySocket.on('myLightToggle', function(data, confirmation) {
+    console.log("In server mySocket.on got myLightToggle message ", data);
+    myLightOn = !myLightOn;
+    console.log("In server mySocket.on, myLight now ", myLightOn);
+    if (myLightOn == 1) 
+      { myLight.write(1); board.color("yellow") }
     else 
-      { frontLight.write(0); board.color("red") };
-    socket.emit('reload', true);
-
+      { myLight.write(0); board.color("red") };
+    confirmation(true);
+    mySocket.emit('reload', 'becauseISaidSo', function(retVal) {
+    if (retVal) console.log("In server mySocket.emit reload worked ",retVal);
+    else console.log("In server mySocket.emit reload FAILED ",retVal);
+});
 });
 
-socket.on('frontLightOn', function(data) {
-    console.log("in server socket.on got frontLightOn message ",data);
-    frontLightOn = 1;  
-    console.log("In server socket.on, frontLight ", frontLightOn);
-    frontLight.write(1);
+mySocket.on('myLightOn', function(data, confirmation) {
+    console.log("in server mySocket.on got myLightOn message ",data);
+    myLightOn = 1;  
+    console.log("In server mySocket.on, myLight ", myLightOn);
+    myLight.write(1);
     board.color("yellow");
-    socket.emit('reload', true);
+    confirmation(true);
+    mySocket.emit('reload', true);
 });
 
 
-socket.on('frontLightOff', function(data) {
-    console.log("in server socket.on got frontLightOff message ",data);
-    frontLightOn = 0;  
-    console.log("In server socket.on, frontLight ", frontLightOn);
-    frontLight.write(0);
+mySocket.on('myLightOff', function(data, confirmation) {
+    console.log("in server mySocket.on got myLightOff message ",data);
+    myLightOn = 0;  
+    console.log("In server mySocket.on, myLight ", myLightOn);
+    myLight.write(0);
     board.color("red");
-    socket.emit('reload', true);
+    confirmation(true);
+    mySocket.emit('reload', true);
 });
-
 });
 };
 
@@ -385,7 +386,7 @@ console.log("project Maui Starting...")
   board.stopBuzzing();
   board.setupEvents();
   // set up initial state
-  frontLight.write(0);
+  myLight.write(0);
   board.color("red");
 
   startClockLoop();
