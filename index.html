@@ -11,7 +11,7 @@
       <form>        
         <div class="row">
           <div class="col-xs-6">
-              <input class="btn btn-success btn-sm" onclick="hisLightToggle()" value="hisLightTBD"></div>
+              <input class="btn btn-success btn-sm" onclick="hisLightToggle()" value="hisLight"></div>
           <div class="col-xs-3">
               <img src="hisLightXYZZY" alt="Light" style="width:40px;height:40px;"></div>
         </div>  
@@ -146,10 +146,10 @@ function myLightToggle() {
 }
 
 // implement button press
-  function hisLightToggle() {
-    console.log("entering hisLightToggle client not implemented yet");
-    hisSocket.emit('myLightToggle', { myLightToggle: 'toggle' }, function(confData) {
-    if (confData) console.log("In client Browser Return  socket.emit status from myLightToggle ",confData);
+function hisLightToggle() {
+  console.log("entering hisLightToggle client not implemented yet");
+  hisSocket.emit('myLightToggle', { myLightToggle: 'toggle' }, function(confData) {
+  if (confData) console.log("In client Browser Return  socket.emit status from myLightToggle ",confData);
      else console.log("In client Return socket.emit status for myLightToggle FAIL ",confData);
 });
 };

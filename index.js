@@ -197,9 +197,6 @@ var myTemperatureInterval = setInterval( function () {
 // });
 }
 
-
-
-
 function startDistanceSensor() {
 console.log("Enabling distance sensor...");
 var ultrasonic = require("jsupm_groveultrasonic");
@@ -212,15 +209,9 @@ var travelTime = sensor.getDistance();
 if (travelTime > 0) {
     distance = (travelTime / 29 / 2).toFixed(3);
 //    if (distance < 50) {
-//    board.color("green");
-    console.log("Currenttime ",time, " travelTime "+travelTime+" distance: " + distance + " [cm]");
-//    };
-//    if (distance > 50) { board.color("white") };
-// send the sensor data to the cloud as a record
-//    
+    console.log("Currenttime ",time, " travelTime "+travelTime+" distance: " + distance + " [cm]"); 
 }
-}, 500); 
-}
+}, 500); }
 
 // Starts the built-in web server that serves up the web page
 // used to interact with the edison
@@ -231,7 +222,6 @@ function doServer() {
   var io = require('socket.io')(server);
   
   var result;
-
 
 // change this to write into a json file and load into browser every time
 
@@ -261,14 +251,11 @@ function index(res) {
     fs.readFile(path.join(__dirname, "index.html"), {encoding: "utf-8"}, stringNserve);
 };
 
-
-
 // read the added data from URL to see alarm time
 //
 app.get('/', function (req, res) {
     var params = req.query;
     if (verboseDebug) console.log("Entering app.get slash night ", night, " morning ",morning);
-
 
 // first set time baseline to NOW
 // then make morning tomorrow morning
@@ -276,8 +263,6 @@ app.get('/', function (req, res) {
 //
    night = moment();
    morning = moment();
-
-   
 
     night.hour(+params.nighthour);
     night.minute(+params.nightminute);
@@ -287,7 +272,6 @@ app.get('/', function (req, res) {
     morning.add(1, "day");
 
     if (verboseDebug) console.log("Almost leaving app.get slash night ", night, " morning ",morning);
-
     index(res);
 });
 
@@ -313,11 +297,6 @@ if (verboseDebug) console.log("Entering json req res");
 //
 if ((night.hour() == 0)  || (morning.hour() == 0 )) { return res.json({ nighthour: 23, nightminute: 1, morninghour: 5, morningminute: 1 }); };
 
-// if (!night.isValid() || !morning.isValid()) {
-//       console.log("Error parsing night and morning parameters");
-//     }
-//    else {console.log("Parsing night and morning is okey dokey no error"); };
-
     res.json({
       nighthour: night.hour() || 0,
       nightminute: night.minute() || 0, 
@@ -340,8 +319,6 @@ server.listen(3000);
 // this section communicates with the webui(s) that want to talk
 
 io.on('connection', function (mySocket) {
-
-
 
 mySocket.on('myLightToggle', function(data, confirmation) {
     console.log("In server mySocket.on got myLightToggle message ", data);
@@ -368,7 +345,6 @@ mySocket.on('myLightOn', function(data, confirmation) {
     mySocket.emit('reload', true);
 });
 
-
 mySocket.on('myLightOff', function(data, confirmation) {
     console.log("in server mySocket.on got myLightOff message ",data);
     myLightOn = 0;  
@@ -385,7 +361,7 @@ function main() {
 console.log("project Maui Starting...")
   board.stopBuzzing();
   board.setupEvents();
-  // set up initial state
+
   myLight.write(0);
   board.color("red");
 
