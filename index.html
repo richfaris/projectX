@@ -7,18 +7,18 @@
   </head>
   <body>
     <div class="container">
-      <h2 class="title">projectMaui</h1>
+      <h2 class="title">projectMaui</h2>
       <form>        
         <div class="row">
           <div class="col-xs-6">
-              <input class="btn btn-success btn-sm" onclick="garageLightToggle()" value="garageLightTBD"></div>
+              <input class="btn btn-success btn-sm" onclick="hisLightToggle()" value="hisLight"></div>
           <div class="col-xs-3">
-              <img src="garageLightXYZZY" alt="Light" style="width:40px;height:40px;"></div>
+              <img src="hisLightXYZZY" alt="Light" style="width:40px;height:40px;"></div>
         </div>  
         <div class="row">
           <div class="col-xs-6">
-             <input class="btn btn-success btn-sm" onclick="frontLightToggle()" value="frontLight"></div>
-          <div class="col-xs-3"> <img src="frontLightXYZZY" alt="Light" style="width:40px;height:40px;"></div>
+             <input class="btn btn-success btn-sm" onclick="myLightToggle()" value="myLight"></div>
+          <div class="col-xs-3"> <img src="myLightXYZZY" alt="Light" style="width:40px;height:40px;"></div>
         </div>        
           <h3 class="header">Curfew Begin</h3>
         <div class="row">
@@ -125,26 +125,35 @@ var   nighthour = document.getElementById("nighthour"),
   
 curfew_main();
 
-var socket = io('http://192.168.1.61:3000');
+var mySocket = io('http://192.168.1.61:3000');
+var hisSocket = io('http://192.168.1.182:3000');
 //  var currentTemp;
   
-socket.on('reload', function (data) {
+mySocket.on('reload', function (data,confirmation) {
     console.log("client just got reload request ", data);
     location.reload();
+    confirmation(true);
   });
 
+var confData;
+// implement button press
+function myLightToggle() {
+  console.log("Entering myLightToggle in client");
+  mySocket.emit('myLightToggle', { myLightToggle: 'toggle' }, function(confData) {
+  if (confData) console.log("In client Browser Return  socket.emit status from myLightToggle ",confData);
+     else console.log("In client Return socket.emit status for myLightToggle FAIL ",confData);
+});
+}
 
 // implement button press
-function frontLightToggle() {
-  console.log("entering frontLightToggle client");
-  socket.emit('frontLightToggle', { frontLightToggle: 'toggle' });
+function hisLightToggle() {
+  console.log("entering hisLightToggle client not implemented yet");
+  hisSocket.emit('myLightToggle', { myLightToggle: 'toggle' }, function(confData) {
+  if (confData) console.log("In client Browser Return  socket.emit status from myLightToggle ",confData);
+     else console.log("In client Return socket.emit status for myLightToggle FAIL ",confData);
+});
 };
 
-// implement button press
-  function garageLightToggle() {
-    console.log("entering garageLightToggle client not implemented yet");
-//    socket.emit('garageLightToggle', { garageLightToggle: 'toggle' });
-};
 </script>
 </body>
 </html>

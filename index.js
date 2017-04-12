@@ -22,6 +22,7 @@
 */
 
 "use strict";
+var verboseDebug = true, vverboseDebug = false;
 
 // The program is using the Node.js built-in `fs` module
 // to load the config.json and html file used to configure the alarm time
@@ -51,30 +52,30 @@ if (config.kit) {
 }
 board.init(config);
 
-
 var datastore = require("./datastore");
 var mqtt = require("./mqtt");
 
 // State of the system
-var current;
-var night = moment(), morning = moment();
-
+var night, morning;
+night = moment();
+morning = moment();
+var time = moment();
+if (vverboseDebug) console.log(time," Initial values for night ",night," morning ",morning); 
 // Start the clock
 // rjf TODO need to check to see if time is in the dark zone
 //
 
 var mraa = require("mraa");
-var frontLight = new mraa.Gpio(8);
-frontLight.dir(mraa.DIR_OUT);
+var myLight = new mraa.Gpio(8);
+myLight.dir(mraa.DIR_OUT);
 
-var frontSW = new mraa.Gpio(4);
-frontSW.dir(mraa.DIR_IN);
-var frontSWState = 0, frontSWNew = 0, frontSWOn = 0;
-
-var frontLightOn = 0;
-var garageLightOn = 0; 
-var garageBoardClient = require("socket.io-client");
-var socketgarageBoard = garageBoardClient.connect("http://192.168.1.182:3000");
+var mySW = new mraa.Gpio(4);
+mySW.dir(mraa.DIR_IN);
+var mySWState = 0, mySWNew = 0, myLightOn = 0;
+// I need to add a call to other board to get proper state of second light
+var hisLightOn = 0;  
+var hisBoardClient = require("socket.io-client");
+var hisSocket = hisBoardClient.connect("http://192.168.1.182:3000");
 
 
 // get my ip address
@@ -83,70 +84,188 @@ var ipAddress = "";
 
 var exec = require('child_process').exec;
     exec('ip a | grep wlan0 | grep inet | awk \'{print substr($2,1,index($2,"/")-1)}\'', function(error, stdout, stderr) {
-//    console.log('stdout: ' + stdout + ' stderr: ' + stderr);
-    if (error !== null) {
+    if (verboseDebug)  console.log(time,'stdout: ' + stdout + ' stderr: ' + stderr);
+    if (error != null) {
         console.log('In ip discovery: exec error: ' + error);
    }  
    
    ipAddress = stdout.trim();  
-   console.log('My ip address is ' + ipAddress );
+   if (verboseDebug) console.log(time," My ip address is " + ipAddress ); 
    });  
 
+// is this a hack?
 
 
+var chatterCount = 100, reads = 0, isCurfew = false;
 
 function startClockLoop() {
   function after(a, b) { return a.isAfter(b, "second"); }
   function same(a, b) { return a.isSame(b, "second"); }
 
   setInterval(function() {
-    var time = moment();
-    // check if display needs to be updated
-    // if (after(time, current)) {
-    //   if (undefined != alarm) 
-    //     {board.message(time.format("h:mm:ss A"),0);
-    //      board.message("Alm "+alarm.format("h.mm.ss A"),1);
-    //      board.color("blue");}
-    //   else
-    //     {board.message(time.format("h:mm:ss A"),0);}
-    //   if (same(current, alarm)) { startAlarm(); }
-    // }
-    // current = time;
-//  if (after(time, nightoff)) { Start Night Off time ;}
-//  if (after(time, morningon)) {turn off night handling }
-// add one day to time?
-    current = time;
-    board.message("T "+time.format("h:mm:ss A"),0);
-    board.message("ip "+ipAddress,1);
-//    board.message("O "+night.format("h.mm A ")+morning.format("h.mm A"),1);  
-frontSWNew = frontSW.read();
-if (frontSWNew != frontSWState) {
-    if (frontSWNew == 1) {
-      frontLightOn = 1;
-      frontLight.write(1);
-      socketgarageBoard.emit('garageLightOn', { garageLightOn: 'toggle' });
-      board.color("yellow");
-// socket.emit reload web page
-    } else { frontLightOn = 0;
-      frontLight.write(0);
-      board.color("red");
-      socketgarageBoard.emit('garageLightOff', { garageLightOff: 'toggle' });
+    time = moment();
+    if (after(night, time)) {
+        console.log(time," Night is here, turning off lights");
+// for now just turn it off once
+// need to ensure that the days get pushed even without browser access
+//
+        if (isCurfew == false) {
+        myLightOn = 0;
+        myLight.write(0);
+        board.color("blue");
+        }
+        isCurfew = true;
     }
+    board.message("T "+time.format("h:mm:ss A"),0);
+    board.message("IP "+ipAddress,1);
+    mySWNew = mySW.read();
+    reads+=1;
+    if (verboseDebug && (reads == chatterCount)) {
+       console.log(time," In startClockLoop: reading switch mySWNew ", mySWNew, " mySWState ", mySWState);
+       reads = 0; };
+    if (mySWNew != mySWState) {
+       if (mySWNew == 1) {
+         myLightOn = 1;
+         myLight.write(1);
+         board.color("yellow");
+         hisSocket.emit('myLightOn', { myLightOn: 'Onxyzzy' }, function(confData) {
+         if (confData) console.log(time," In server, controlling other server Return socket.emit status from myLightOn ",confData);
+            else console.log(time," In client Return socket.emit status for myLightOn FAIL ",confData);
+         });      
+  // mySocket.emit reload web page
+} else { 
+        myLightOn = 0;
+        myLight.write(0);
+        board.color("red");
+        hisSocket.emit('myLightOff', { myLightOff: 'Offxyzzy' }, function(confData) {
+        if (confData) console.log(time," In server Return socket.emit status from myLightOff ",confData);
+           else console.log(time," In client Return socket.emit status for myLightOff FAIL ",confData);
+      });
 }
-    frontSWState = frontSWNew;
+}
+    mySWState = mySWNew;
 }, 200 );
-} 
-// TODO rich should I change the granularity to more coarse?
-var mraa = require("mraa");
+}  // end startClockLoop
+
 // Display and then store record in the remote datastore and/or mqtt server
 // of how long the alarm was ringing before it was turned off
 function logging(duration) {
-  console.log("Time to log something:" + duration);
+  console.log(time," Time to log something:" + duration);
 
   var payload = { value: duration };
   datastore.log(config, payload);
   mqtt.log(config, payload);
 }
+
+var tempF = 999.9;
+var flashing = 0;
+
+function startTempSensor() {
+var a, resistance, tempC;
+var B = 3975;
+//GROVE Kit A1 Connector --> Aio(1)
+// var mraa = require("mraa");
+var myAnalogPin = new mraa.Aio(1);
+
+console.log(time," Enabling temperature sensor...");
+
+var myTemperatureInterval = setInterval( function () {
+      a = myAnalogPin.read();
+           
+      resistance = (1023 - a) * 10000 / a; //get the resistance of the sensor;
+      tempC = 1 / (Math.log(resistance / 10000) / B + 1 / 298.15) - 273.15;//convert to temperature via datasheet ;
+      tempF = (tempC * (9 / 5)) + 32;
+
+}, 5000);
+}  // end startTempSensor
+
+var previousTime = moment();
+
+function startDistanceSensor() {
+console.log(time," Enabling distance sensor...");
+var ultrasonic = require("jsupm_groveultrasonic");
+var sensor = new ultrasonic.GroveUltraSonic(7);
+var distance;
+var confData;
+
+var myProximityInterval = setInterval(function()  {
+var travelTime = sensor.getDistance();
+
+if (travelTime > 0) {
+    distance = (travelTime / 29 / 2).toFixed(3);
+
+      
+      if ((distance < 600) && (ipAddress != "192.168.1.61") && (!flashing)) {
+             if (verboseDebug) 
+        console.log(time," Less than 600 Distance Time: ",time, " previousTime: ", previousTime, " diff: ", time.diff(previousTime), " distance: ", distance);
+                flashFive(); 
+                flashHisFive(); 
+        }     
+      previousTime = time; 
+ }  // end traveltime > 0
+}   // end setInterval
+, 200); 
+}  // end startDistanceSensor
+
+function flashHisFive() {
+hisSocket.emit('flashHisFive', { flashHisFive: 'DoFlashOrElse' }, function(confData) {
+   if (confData) console.log(time," In server, flashHisFive ",confData);
+      else console.log(time," In server flashHisFiveFAIL ",confData);
+   });
+}
+
+function flashLCD() {
+ var i; 
+   for (let i=0; i < 6; i++ ) {
+    setTimeout(function timer1() {
+        board.color("yellow");
+        console.log(time," Im yellow i= ",i);        
+    }, i*5000);
+    setTimeout(function timer2() {
+        board.color("red");
+        console.log(time," Im red i= ",i);        
+  }, (i*5000)+2500);
+}  // end i loop 
+}
+
+function flashFive() {
+
+// for total of how long?
+//
+   flashing = 1;
+   flashLCD();
+   myLightOn = 1;
+   myLight.write(1);
+   hisSocket.emit('myLightOn', { myLightOn: 'zyZZyOn' }, function(confData) {
+   if (confData) console.log(time," In server, controlling other server Return socket.emit status from myLightOn ",confData);
+      else console.log(time," In server flashFive Return socket.emit status for myLightOn FAIL ",confData);
+   });
+   setTimeout(function timer3() {
+      myLightOn = 0;
+      myLight.write(0);
+      board.color("red");
+      console.log(time," Final red");
+      hisSocket.emit('myLightOff', { myLightOff: 'zyZZyOff' }, function(confData) {
+        if (confData) console.log(time," In server flashFive Return socket.emit status from myLightOff ",confData);
+           else console.log(time," In server flashFive Return socket.emit status for myLightOff FAIL ",confData);
+        });
+   }, 30000);
+   flashing = 0;
+if (isCurfew) { board.color("blue"); }
+else { board.color("red"); }
+}  // end flashfive
+
+
+
+
+// When exiting: clear interval and print message
+process.on('SIGINT', function()
+{
+  clearInterval(myProximityInterval);
+  console.log(time," Exiting...");
+  process.exit(0);
+});
+
 
 
 // Starts the built-in web server that serves up the web page
@@ -156,11 +275,8 @@ function doServer() {
   var app = require("express")();
   var server = require('http').Server(app);
   var io = require('socket.io')(server);
-  var B = 3975;
-//  var mraa = require("mraa");
-  var a, resistance, tempC, tempF = 999.9;
+  
   var result;
-
 
 // change this to write into a json file and load into browser every time
 
@@ -171,17 +287,17 @@ function index(res) {
       var tempShort = tempString.substr(0,4);
       if (err) { return console.log(err); }
           r1 = data.replace(/tempNowXYZZY/, tempShort );
-    if (frontLightOn) {
-        r2 = r1.replace(/frontLightXYZZY/, "BulbOn.jpg" ); 
+    if (myLightOn) {
+        r2 = r1.replace(/myLightXYZZY/, "BulbOn.jpg" ); 
          }
     else {
-        r2 = r1.replace(/frontLightXYZZY/, "BulbOff.jpg" ); 
+        r2 = r1.replace(/myLightXYZZY/, "BulbOff.jpg" ); 
          };
-    if (garageLightOn) {
-        r3 = r2.replace(/garageLightXYZZY/, "BulbOn.jpg" ); 
+    if (hisLightOn) {
+        r3 = r2.replace(/hisLightXYZZY/, "BulbOn.jpg" ); 
          }
     else {
-        r3 = r2.replace(/garageLightXYZZY/, "BulbOff.jpg" ); 
+        r3 = r2.replace(/hisLightXYZZY/, "BulbOff.jpg" ); 
          };
         r4 = r3.replace(/ipNowXYZZY/, ipAddress );
         result = r4;
@@ -190,108 +306,51 @@ function index(res) {
     fs.readFile(path.join(__dirname, "index.html"), {encoding: "utf-8"}, stringNserve);
 };
 
-//GROVE Kit A1 Connector --> Aio(1)
-var mraa = require("mraa");
-var myAnalogPin = new mraa.Aio(1);
-
-console.log("Enabling temperature sensor...");
-
-var myTemperatureInterval = setInterval( function () {
-      var a = myAnalogPin.read();
-        
-      resistance = (1023 - a) * 10000 / a; //get the resistance of the sensor;
-      tempC = 1 / (Math.log(resistance / 10000) / B + 1 / 298.15) - 273.15;//convert to temperature via datasheet ;
-      //console.log("Celsius Temperature "+celsius_temperature); 
-      tempF = (tempC * (9 / 5)) + 32;
-
-}, 10000);
-
-
-console.log("Enabling distance sensor...");
-var ultrasonic = require("jsupm_groveultrasonic");
-var sensor = new ultrasonic.GroveUltraSonic(7);
-
-
-var myProximityInterval = setInterval(function()  {
-var travelTime = sensor.getDistance();
-
-if (travelTime > 0) {
-    var distance = (travelTime / 29 / 2).toFixed(3);
-    if (distance < 50) {
-//    board.color("green");
-    console.log("Currenttime ",current, " travelTime "+travelTime+" distance: " + distance + " [cm]");
-    };
-//    if (distance > 50) { board.color("white") };
-// send the sensor data to the cloud as a record
-//    
-}
-}, 500); 
-
-// When exiting: clear interval and print message
-
-process.on('SIGINT', function()
-
-{
-  clearInterval(myProximityInterval);
-  clearInterval(myTemperatureInterval);
-  console.log("Exiting...");
-  process.exit(0);
-});
-
-
 // read the added data from URL to see alarm time
 //
- //var night = moment(), morning = moment();
-// var night = moment(), morning = moment();
 app.get('/', function (req, res) {
-  var params = req.query;
-//        night = moment(),
-//        morning = moment();
+    var params = req.query;
+    if (verboseDebug) console.log(time," Entering app.get slash night ", night, " morning ",morning);
 
-// what if night and morning are not properly defined before.  I'm just setting some parts.
-
-if (night.isValid() && morning.isValid()) {
+// first set time baseline to NOW
+// then make morning tomorrow morning
+// then fill in the actual hours.  default of 11,1 and 5,1 or what comes from the form
+//
+   night = moment();
+   morning = moment();
 
     night.hour(+params.nighthour);
     night.minute(+params.nightminute);
+
     morning.hour(+params.morninghour);
     morning.minute(+params.morningminute);
- }  else {console.log("Error parsing night and morning parameters");
-        night = moment("now");
-        morning = moment("now");
+    morning.add(1, "day");
 
-
-        };
-
-//    if (time.isBefore(moment())) {
-//      time.add(1, "day");
-//    }
-//    alarm = time;
-
+    if (verboseDebug) console.log(time," Almost leaving app.get slash night ", night, " morning ",morning);
     index(res);
 });
 
 app.get('/*.css', function (req, res) {
+  if (verboseDebug)  console.log(time," Entering app.get CSS"); 
   res.sendFile(path.join(__dirname, 'styles.css' ));
 });
 
 app.get('/BulbOn.jpg', function (req, res) {
+if (verboseDebug) console.log(time," Entering app.get BulbOn"); 
   res.sendFile(path.join(__dirname, 'BulbOn.jpg' ));
 });
 
 app.get('/BulbOff.jpg', function (req, res) {
+if (verboseDebug) console.log("Entering app.get BulbOff");
   res.sendFile(path.join(__dirname, 'BulbOff.jpg' ));
 });
 
 function json(req, res) {
-//    if ((night.hour() == 0)  && (morning.hour() == 0 )) { return res.json({ nighthour: 23, nightminute: 1, morninghour: 5, morningminute: 1 }); };
+if (verboseDebug) console.log(time," Entering json req res"); 
 
-if (!night.isValid() || !morning.isValid()) {
-      console.log("Error parsing night and morning parameters");
-    }
-   else {console.log("Parsing is okey dokey"); };
-
-
+// if no values are entered default to 11pm, 5am with 1 minute so I can recognize default
+//
+if ((night.hour() == 0)  || (morning.hour() == 0 )) { return res.json({ nighthour: 23, nightminute: 1, morninghour: 5, morningminute: 1 }); };
 
     res.json({
       nighthour: night.hour() || 0,
@@ -299,64 +358,79 @@ if (!night.isValid() || !morning.isValid()) {
       morninghour: morning.hour() || 0,
       morningminute: morning.minute() || 0
     });
+// nice try but this should start with setting both moments to NOW, then moving the hours, and adding one day for tomorrow morning
+//    morning = morning.add(1, "day");
 
-    morning = morning.add(1, "day");
-
-    console.log("in res.json night ", night);
-    console.log("in res.json morning ", morning);
+    if (vverboseDebug) console.log(time," in res.json night.hour ", night.hour() );
+    if (vverboseDebug) console.log(time," in res.json night.minute ", night.minute() );
+    if (vverboseDebug) console.log(time," in res.json morning.hour ", morning.hour() );
+    if (vverboseDebug) console.log(time," in res.json morning.minute ", morning.minute() );
 };
 
-app.get('/curfew.json', json );
+app.get('/curfew.json', json);
 
 server.listen(3000);
 
 // this section communicates with the webui(s) that want to talk
 
-io.on('connection', function (socket) {
+io.on('connection', function (mySocket) {
 
-
-socket.on('frontLightToggle', function(data) {
-    console.log("in server got frontLightToggle message ",data);
-    frontLightOn = !frontLightOn;
-    console.log("In server socket, frontLight now ", frontLightOn);
-    if (frontLightOn == 1) 
-      { frontLight.write(1); board.color("yellow") }
+mySocket.on('myLightToggle', function(data, confirmation) {
+    console.log(time," In server mySocket.on got myLightToggle message ", data);
+    myLightOn = !myLightOn;
+    console.log(time," In server mySocket.on, myLight now ", myLightOn);
+    if (myLightOn == 1) 
+      { myLight.write(1); board.color("yellow") }
     else 
-      { frontLight.write(0); board.color("red") };
-    socket.emit('reload', true);
-
+      { myLight.write(0); board.color("red") };
+    confirmation(true);
+    mySocket.emit('reload', 'becauseISaidSo', function(retVal) {
+    if (retVal) console.log(time," In server mySocket.emit reload worked ",retVal);
+    else console.log(time," In server mySocket.emit reload FAILED ",retVal);
+});
 });
 
-socket.on('frontLightOn', function(data) {
-    console.log("in server got frontLightOn message ",data);
-    frontLightOn = 1;  
-    console.log("In server socket, frontLight ", frontLightOn);
-    frontLight.write(1);
+mySocket.on('myLightOn', function(data, confirmation) {
+    console.log(time," in server mySocket.on got myLightOn message ",data);
+    myLightOn = 1;  
+    console.log(time," In server mySocket.on, myLight ", myLightOn);
+    myLight.write(1);
     board.color("yellow");
-    socket.emit('reload', true);
+    confirmation(true);
+    mySocket.emit('reload', true);
 });
 
-
-socket.on('frontLightOff', function(data) {
-    console.log("in server got frontLightOff message ",data);
-    frontLightOn = 0;  
-    console.log("In server socket, frontLight ", frontLightOn);
-    frontLight.write(0);
+mySocket.on('myLightOff', function(data, confirmation) {
+    console.log(time," in server mySocket.on got myLightOff message ",data);
+    myLightOn = 0;  
+    console.log(time," In server mySocket.on, myLight ", myLightOn);
+    myLight.write(0);
     board.color("red");
-    socket.emit('reload', true);
+    confirmation(true);
+    mySocket.emit('reload', true);
+});
+
+mySocket.on('flashHisFive', function(data, confirmation) {
+    console.log(time," in server mySocket.on got flashHisFive message ",data);
+    flashFive();
 });
 
 });
 };
 
-
 function main() {
-console.log("project Maui Starting...")
+console.log(time," project Maui Starting...")
   board.stopBuzzing();
   board.setupEvents();
 
+  myLight.write(0);
+  board.color("red");
+
   startClockLoop();
-  doServer();
+  startTempSensor();
+  startDistanceSensor();
+  console.log(time," Starting Server...")
+  doServer();  
 }
 
 main();
