@@ -3,7 +3,7 @@
   <head>
     <title>projectMaui</title> 
     <link rel="stylesheet" href="styles.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" >
   </head>
   <body>
     <div class="container">
@@ -68,6 +68,7 @@
               </tbody>
             </table>
     </div>
+<pre class="pre-scrollable" id="log"></pre>
 <script src="/socket.io/socket.io.js"></script>
 <script>
 
@@ -76,7 +77,23 @@ var   nighthour = document.getElementById("nighthour"),
       morninghour = document.getElementById("morninghour"),
       morningminute = document.getElementById("morningminute");
       
-      function option(num) {
+    (function () {
+    var old = console.log;
+    var logger = document.getElementById('log');
+    console.log = function () {
+      for (var i = 0; i < arguments.length; i++) {
+        if (typeof arguments[i] == 'object') {
+            logger.innerHTML += (JSON && JSON.stringify ? JSON.stringify(arguments[i], undefined, 2) : arguments[i]) + '<br />';
+        } else {
+            logger.innerHTML += arguments[i] + '<br />';
+        }
+      }
+//      old(message);  // added by rjf
+    }
+    })();
+
+
+     function option(num) {
         var opt = document.createElement("option");
         opt.setAttribute("value", num);
         opt.text = num.toString();

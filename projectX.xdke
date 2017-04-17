@@ -8,8 +8,8 @@
   "iot-tab": {
     "fileStatus": {
       ".jshintrc": {
-        "previousModTime": 1484290674000,
-        "modified": 1484290674000,
+        "previousModTime": 1492036924858,
+        "modified": 1492036924858,
         "seen": true,
         "name": ".jshintrc"
       },
@@ -62,14 +62,14 @@
         "name": "icon.png"
       },
       "index.html": {
-        "previousModTime": 1491971247960,
-        "modified": 1491971247960,
+        "previousModTime": 1492149618381,
+        "modified": 1492149618381,
         "seen": true,
         "name": "index.html"
       },
       "index.js": {
-        "previousModTime": 1492031257988,
-        "modified": 1492031257988,
+        "previousModTime": 1492198932128,
+        "modified": 1492198932128,
         "seen": true,
         "name": "index.js"
       },
@@ -140,14 +140,14 @@
         "name": "test.json"
       },
       ".gitattributes": {
-        "previousModTime": 1487712810000,
-        "modified": 1487712810000,
+        "previousModTime": 1492036924857,
+        "modified": 1492036924857,
         "seen": true,
         "name": ".gitattributes"
       },
       ".gitignore": {
-        "previousModTime": 1487712810000,
-        "modified": 1487712810000,
+        "previousModTime": 1492036924857,
+        "modified": 1492036924857,
         "seen": true,
         "name": ".gitignore"
       },
@@ -170,17 +170,13 @@
         "name": "projectX.xdk"
       },
       "projectX.xdke": {
-        "previousModTime": 1492031187676,
-        "modified": 1492031187676,
+        "previousModTime": 1492199080606,
+        "modified": 1492199080606,
         "seen": true,
         "name": "projectX.xdke"
       }
     },
-    "boardFileStatus": {
-      "index.js": {
-        "previousModTime": 1492031301835
-      }
-    }
+    "boardFileStatus": {}
   },
   "editorTab": {
     "currentEditorMode": 0

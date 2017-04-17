@@ -55,12 +55,34 @@ board.init(config);
 var datastore = require("./datastore");
 var mqtt = require("./mqtt");
 
-// State of the system
+// Set the curfew times
+
+function after(a, b) { return a.isAfter(b, "second"); }
+function same(a, b) { return a.isSame(b, "second"); }
+
 var night, morning;
 night = moment();
 morning = moment();
+
+// define dark times
+// replace this with calls to weather.com to get sunset and sunrise...
+// every day these need to get rerun or the sensor will never fire
+//
+var darknight = moment();
+darknight.hour(18);
+darknight.minute(0);
+
+var darkmorning = moment();
+darkmorning.hour(5);
+darkmorning.minute(0);
+darkmorning.add(1, "day");
+var timelast = moment();
+var isNotResetYet = true;
+
 var time = moment();
-if (vverboseDebug) console.log(time," Initial values for night ",night," morning ",morning); 
+if (verboseDebug) console.log(time," Initial values for darknight ",darknight," darkmorning ",darkmorning); 
+if (verboseDebug) console.log(time," Value for timelast ",timelast); 
+if (verboseDebug) console.log(time," Initial values for night ",night," morning ",morning); 
 // Start the clock
 // rjf TODO need to check to see if time is in the dark zone
 //
@@ -84,7 +106,7 @@ var ipAddress = "";
 
 var exec = require('child_process').exec;
     exec('ip a | grep wlan0 | grep inet | awk \'{print substr($2,1,index($2,"/")-1)}\'', function(error, stdout, stderr) {
-    if (verboseDebug)  console.log(time,'stdout: ' + stdout + ' stderr: ' + stderr);
+    if (vverboseDebug)  console.log(time,'stdout: ' + stdout + ' stderr: ' + stderr);
     if (error != null) {
         console.log('In ip discovery: exec error: ' + error);
    }  
@@ -96,26 +118,56 @@ var exec = require('child_process').exec;
 // is this a hack?
 
 
-var chatterCount = 100, reads = 0, isCurfew = false;
+var chatterCount = 100, reads = 0, isCurfew = false, isDark = false;
 
 function startClockLoop() {
-  function after(a, b) { return a.isAfter(b, "second"); }
-  function same(a, b) { return a.isSame(b, "second"); }
 
   setInterval(function() {
     time = moment();
+
+    if (after(darknight, time)) {
+       if (!isDark) { isDark = true; };
+    }
+
+    if (after(darkmorning, time)) {
+       if (isDark) { isDark = false; };
+    }
+
     if (after(night, time)) {
-        console.log(time," Night is here, turning off lights");
-// for now just turn it off once
-// need to ensure that the days get pushed even without browser access
-//
-        if (isCurfew == false) {
+    if ((isCurfew == true) && (myLightOn == 1)) {  // should be changed to just the first time after Curfew
+        console.log(time," Curfew is here, turning off lights: isCurfew ", isCurfew);
         myLightOn = 0;
         myLight.write(0);
         board.color("blue");
-        }
-        isCurfew = true;
     }
+  }  // end after night...
+    if (after(morning, time)) {
+        if (isCurfew) {
+      isCurfew = false;
+      console.log(time," Curfew is over, turn board to white: isCurfew ", isCurfew);
+      board.color("white");
+  }
+    }
+
+
+
+    // under what circumstances to I reset the timelast?
+    //
+    // report all of this to the UI for debugging and information purposes once we get nightfall and sunrise
+    //
+    if (after(timelast, time)) {
+        if (isNotResetYet) {
+      isNotResetYet = false;
+      darknight = moment();
+      darknight.hour(18);
+      darknight.minute(0);
+      darkmorning = moment();
+      darkmorning.hour(5);
+      darkmorning.minute(0);
+      darkmorning.add(1, "day");
+      
+  }
+}
     board.message("T "+time.format("h:mm:ss A"),0);
     board.message("IP "+ipAddress,1);
     mySWNew = mySW.read();
@@ -195,9 +247,9 @@ if (travelTime > 0) {
     distance = (travelTime / 29 / 2).toFixed(3);
 
       
-      if ((distance < 600) && (ipAddress != "192.168.1.61") && (!flashing)) {
+      if ((distance < 243.84) && (ipAddress == "192.168.1.182") && (!flashing) && (!myLightOn) && (isDark)) {
              if (verboseDebug) 
-        console.log(time," Less than 600 Distance Time: ",time, " previousTime: ", previousTime, " diff: ", time.diff(previousTime), " distance: ", distance);
+        console.log(time," Ultrasonic triggered Time: ",time, " previousTime: ", previousTime, " diff: ", time.diff(previousTime), " distance: ", distance," flashing ",flashing," myLightOn ", myLightOn, " isDark ",isDark);
                 flashFive(); 
                 flashHisFive(); 
         }     
@@ -208,9 +260,9 @@ if (travelTime > 0) {
 }  // end startDistanceSensor
 
 function flashHisFive() {
-hisSocket.emit('flashHisFive', { flashHisFive: 'DoFlashOrElse' }, function(confData) {
-   if (confData) console.log(time," In server, flashHisFive ",confData);
-      else console.log(time," In server flashHisFiveFAIL ",confData);
+hisSocket.emit('flashMyFive', { flashMyFive: 'DoFlashOrElse' }, function(confData) {
+   if (confData) console.log(time," In server, flashMyFive ",confData);
+      else console.log(time," In server flashMyFive FAIL ",confData);
    });
 }
 
@@ -233,6 +285,7 @@ function flashFive() {
 // for total of how long?
 //
    flashing = 1;
+   console.log(time, "In FlashFive flashing ON",flashing);
    flashLCD();
    myLightOn = 1;
    myLight.write(1);
@@ -248,11 +301,12 @@ function flashFive() {
       hisSocket.emit('myLightOff', { myLightOff: 'zyZZyOff' }, function(confData) {
         if (confData) console.log(time," In server flashFive Return socket.emit status from myLightOff ",confData);
            else console.log(time," In server flashFive Return socket.emit status for myLightOff FAIL ",confData);
-        });
+      flashing = 0;
+      console.log(time, "In FlashFive flashing OFF",flashing);
+      if (isCurfew) { board.color("blue"); }
+          else { board.color("red"); }
+      });
    }, 30000);
-   flashing = 0;
-if (isCurfew) { board.color("blue"); }
-else { board.color("red"); }
 }  // end flashfive
 
 
@@ -327,6 +381,9 @@ app.get('/', function (req, res) {
     morning.add(1, "day");
 
     if (verboseDebug) console.log(time," Almost leaving app.get slash night ", night, " morning ",morning);
+    if (after(darkmorning, morning)) timelast = darkmorning; else timelast = morning;
+    if (verboseDebug) console.log(time," Almost leaving app.get slash darknight ", darknight, " darkmorning  ",darkmorning, " timelast ", timelast);
+
     index(res);
 });
 
@@ -401,7 +458,7 @@ mySocket.on('myLightOn', function(data, confirmation) {
 });
 
 mySocket.on('myLightOff', function(data, confirmation) {
-    console.log(time," in server mySocket.on got myLightOff message ",data);
+    console.log(time," In server mySocket.on got myLightOff message ",data);
     myLightOn = 0;  
     console.log(time," In server mySocket.on, myLight ", myLightOn);
     myLight.write(0);
@@ -410,9 +467,9 @@ mySocket.on('myLightOff', function(data, confirmation) {
     mySocket.emit('reload', true);
 });
 
-mySocket.on('flashHisFive', function(data, confirmation) {
-    console.log(time," in server mySocket.on got flashHisFive message ",data);
-    flashFive();
+mySocket.on('flashMyFive', function(data, confirmation) {
+    console.log(time," in server mySocket.on got flashMyFive message ",data);
+    if (isDark) flashFive(); else console.log(time," flashFive requested from partner, but it's not dark ");
 });
 
 });
