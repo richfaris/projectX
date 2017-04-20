@@ -8,7 +8,11 @@
   <body>
     <div class="container">
       <h2 class="title">projectMaui</h2>
-      <form>        
+      <form>
+      <div class="row">
+          <div class="col-xs-6">
+              <input class="btn btn-success btn-sm" onclick="testFlashing()" value="testFlashing"></div>
+        </div>       
         <div class="row">
           <div class="col-xs-6">
               <input class="btn btn-success btn-sm" onclick="hisLightToggle()" value="hisLight"></div>
@@ -64,10 +68,20 @@
                 <tr>
                   <td>MyIpAddress</td>
                   <td>ipNowXYZZY</td>
-                </tr>             
+                </tr>      
+                <tr>
+                  <td>isCurfew</td>
+                  <td>isCurfewXYZZY</td>
+                </tr>    
+                <tr>
+                  <td>isDark</td>
+                  <td>isDarkXYZZY</td>
+                </tr>    
               </tbody>
             </table>
     </div>
+
+<pre class="pre-scrollable" id="log"></pre>
 <script src="/socket.io/socket.io.js"></script>
 <script>
 
@@ -76,7 +90,24 @@ var   nighthour = document.getElementById("nighthour"),
       morninghour = document.getElementById("morninghour"),
       morningminute = document.getElementById("morningminute");
       
-      function option(num) {
+
+    (function () {
+    var old = console.log;
+    var logger = document.getElementById('log');
+    console.log = function () {
+      for (var i = 0; i < arguments.length; i++) {
+        if (typeof arguments[i] == 'object') {
+            logger.innerHTML += (JSON && JSON.stringify ? JSON.stringify(arguments[i], undefined, 2) : arguments[i]) + '<br />';
+        } else {
+            logger.innerHTML += arguments[i] + '<br />';
+        }
+      }
+//      old(message);  // added by rjf
+    }
+    })();
+
+
+    function option(num) {
         var opt = document.createElement("option");
         opt.setAttribute("value", num);
         opt.text = num.toString();
@@ -125,8 +156,8 @@ var   nighthour = document.getElementById("nighthour"),
   
 curfew_main();
 
-var mySocket = io('http://192.168.1.61:3000');
-var hisSocket = io('http://192.168.1.182:3000');
+var mySocket = io('http://192.168.1.182:3000');
+var hisSocket = io('http://192.168.1.61:3000');
 //  var currentTemp;
   
 mySocket.on('reload', function (data,confirmation) {
@@ -145,12 +176,21 @@ function myLightToggle() {
 });
 }
 
-// implement button press
 function hisLightToggle() {
-  console.log("entering hisLightToggle client not implemented yet");
+  console.log("entering hisLightToggle client");
   hisSocket.emit('myLightToggle', { myLightToggle: 'toggle' }, function(confData) {
-  if (confData) console.log("In client Browser Return  socket.emit status from myLightToggle ",confData);
+  if (confData) console.log("In client Browser Return socket.emit status from myLightToggle ",confData);
      else console.log("In client Return socket.emit status for myLightToggle FAIL ",confData);
+       console.log("leaving hisLightToggle client");
+
+});
+};
+
+function testFlashing() {
+  console.log("entering testFlashing client");
+  mySocket.emit('mytestFlashing', { mytestFlashing: 'flashMe' }, function(confData) {
+  if (confData) console.log("In client socket.emit status from mytestFlashing ",confData);
+     else console.log("In client Return socket.emit status for mytestFlashing FAIL ",confData);
 });
 };
 
