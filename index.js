@@ -158,7 +158,7 @@ if ( (((time.minute() >= night.minute()) && (time.hour() == night.hour()))  ||  
        console.log(time," In startClockLoop: switch mySWNew ", mySWNew, " mySWState ", mySWState," Curfews ", night, morning, " darktimes ", darknight, darkmorning, " isDark ",isDark, " isCurfew ", isCurfew);
        reads = 0; };
 
-// here is the keyboad reading code.  I'm going to change it to a 1 is up and 0 is down logic.  to a three way switch logic
+// here is the switch reading code.  I'm going to change it to a 1 is up and 0 is down logic.  to a three way switch logic
 //
     if (mySWNew != mySWState) {
          if (myLightOn) 
@@ -168,7 +168,7 @@ if ( (((time.minute() >= night.minute()) && (time.hour() == night.hour()))  ||  
        }
     mySWState = mySWNew;
 }, 200 );
-}  // end startClockLoop
+}  // end startClockLoop 
 
 // Display and then store record in the remote datastore and/or mqtt server
 // of how long the alarm was ringing before it was turned off
