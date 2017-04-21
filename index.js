@@ -111,8 +111,6 @@ var exec = require('child_process').exec;
    if (verboseDebug) console.log(time," My ip address is " + ipAddress ); 
    });  
 
-// is this a hack?
-
 
 // this is the main loop of the program that checks the sensors and takes action, updates the screen
 // RJF consider going in and checking status more carefully on all calls
@@ -164,9 +162,9 @@ if ( (((time.minute() >= night.minute()) && (time.hour() == night.hour()))  ||  
 //
     if (mySWNew != mySWState) {
          if (myLightOn) 
-            { myLight.write(1); board.color("yellow") }
+            { myLight.write(0); board.color("red") }
          else 
-            { myLight.write(0); board.color("red") };
+            { myLight.write(1); board.color("yellow") };
        }
     mySWState = mySWNew;
 }, 200 );
@@ -256,7 +254,7 @@ function flashLCD() {
 
 function flashFive() {
 
-// for total of how long?
+// for 30 seconds
 //
    isFlashing = 1;
    console.log(time, "In FlashFive isFlashing ON",isFlashing);
@@ -403,7 +401,7 @@ mySocket.on('myLightToggle', function(data, confirmation) {
     console.log(time," In server mySocket.on got myLightToggle message ", data);
     myLightOn = !myLightOn;
     console.log(time," In server mySocket.on, myLight now ", myLightOn);
-    if (myLightOn == 1) 
+    if (myLightOn) 
       { myLight.write(1); board.color("yellow") }
     else 
       { myLight.write(0); board.color("red") };
