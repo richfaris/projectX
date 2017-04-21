@@ -114,6 +114,11 @@ var exec = require('child_process').exec;
 // is this a hack?
 
 
+// this is the main loop of the program that checks the sensors and takes action, updates the screen
+// RJF consider going in and checking status more carefully on all calls
+// RJF consider adding testability logic so I can run unit tests
+
+
 var chatterCount = 200, reads = 0, isCurfew = false, isDark = false, isFlashTest = false;
 
 function startClockLoop() {
@@ -126,13 +131,26 @@ function startClockLoop() {
       " night.hour ", night.hour(), " night.minute ", night.minute(),
       " morning.hour ", morning.hour(), " morning.minute ", morning.minute());
 
+// this is to see if current time is within the window of "dark time" and thus we will allow the sensor to turn on the light
+
 if ( (((time.minute() >= darknight.minute()) && (time.hour() == darknight.hour()))  ||  (time.hour() >= darknight.hour() ) ) || 
       ((time.minute() <= darkmorning.minute()) && (time.hour() == darkmorning.hour())) || (time.hour() < darkmorning.hour())   )
       isDark = true; else isDark = false;
 
+// this is to see if the current time is inside Curfew hours.  Curfew naturally turns off the light at curfew start
+// allows the Ultrasonic to trigger the lights, but if someone explicitly clicks the lights back on, allows it and doesn't 
+// set it back to off ever
+// RJF option to make lightswitch turn after curfew to a 30 second flashing period too.
+
 if ( (((time.minute() >= night.minute()) && (time.hour() == night.hour()))  ||  (time.hour() >= night.hour() ) ) || 
       ((time.minute() <= morning.minute()) && (time.hour() == morning.hour()))  || (time.hour() < morning.hour())   )
       isCurfew = true; else isCurfew = false;
+
+// update the 2 line display.  right now what we are writing on the screen isn't super useful, I'm mostly using colors
+// to denote the state of the system, which is good
+// RJF what could I add to the display to make it better?
+// RJF maybe a notification of isDark or isCurfew would help, even a Dd Cc kind of shortcut
+
 
     board.message("T "+time.format("h:mm:ss A"),0);
     board.message("IP "+ipAddress,1);
@@ -141,26 +159,15 @@ if ( (((time.minute() >= night.minute()) && (time.hour() == night.hour()))  ||  
     if (verboseDebug && (reads == chatterCount)) {
        console.log(time," In startClockLoop: switch mySWNew ", mySWNew, " mySWState ", mySWState," Curfews ", night, morning, " darktimes ", darknight, darkmorning, " isDark ",isDark, " isCurfew ", isCurfew);
        reads = 0; };
+
+// here is the keyboad reading code.  I'm going to change it to a 1 is up and 0 is down logic.  to a three way switch logic
+//
     if (mySWNew != mySWState) {
-       if (mySWNew == 1) {
-         myLightOn = 1;
-         myLight.write(1);
-         board.color("yellow");
-         hisSocket.emit('myLightOn', { myLightOn: 'Onxyzzy' }, function(confData) {
-         if (confData) console.log(time," In server, controlling other server Return socket.emit status from myLightOn ",confData);
-            else console.log(time," In client Return socket.emit status for myLightOn FAIL ",confData);
-         });      
-  // mySocket.emit reload web page
-} else { 
-        myLightOn = 0;
-        myLight.write(0);
-        board.color("red");
-        hisSocket.emit('myLightOff', { myLightOff: 'Offxyzzy' }, function(confData) {
-        if (confData) console.log(time," In server Return socket.emit status from myLightOff ",confData);
-           else console.log(time," In client Return socket.emit status for myLightOff FAIL ",confData);
-      });
-}
-}
+         if (myLightOn) 
+            { myLight.write(1); board.color("yellow") }
+         else 
+            { myLight.write(0); board.color("red") };
+       }
     mySWState = mySWNew;
 }, 200 );
 }  // end startClockLoop
@@ -445,8 +452,15 @@ console.log(time," project Maui Starting...")
   board.stopBuzzing();
   board.setupEvents();
 
-  myLight.write(0);
-  board.color("red");
+// need to ensure that at startup both lights are in a known state (off)
+// 
+
+    myLightOn = 0;  
+    console.log(time," In main init myLight ", myLightOn);
+    myLight.write(0);
+    board.color("red");
+
+
 
   startClockLoop();
   startTempSensor();

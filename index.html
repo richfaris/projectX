@@ -107,7 +107,7 @@ var   nighthour = document.getElementById("nighthour"),
     })();
 
 
-    function option(num) {
+function option(num) {
         var opt = document.createElement("option");
         opt.setAttribute("value", num);
         opt.text = num.toString();
@@ -175,6 +175,7 @@ function myLightToggle() {
      else console.log("In client Return socket.emit status for myLightToggle FAIL ",confData);
 });
 }
+
 
 function hisLightToggle() {
   console.log("entering hisLightToggle client");
