@@ -39,6 +39,11 @@ var config = JSON.parse(
 );
 
 
+// The program is using the `superagent` module
+// to make the remote calls to the Weather Underground API
+var request = require("superagent");
+
+
 // The program is using the `moment` module for easier time-based calculations,
 // to determine when the alarm should be sounded.
 var moment = require("moment");
@@ -117,11 +122,21 @@ var exec = require('child_process').exec;
 // RJF consider adding testability logic so I can run unit tests
 
 
-var chatterCount = 200, reads = 0, isCurfew = false, isDark = false, isFlashTest = false;
-
+var chatterCount = 300, weatherCount = 900000, reads = 0, weatherLookups = 0, isCurfew = false, isDark = false, isFlashTest = false;
+// 900,000 is one weather lookup every 15 minutes
+// 300 is 60seconds
+getWeather();
 function startClockLoop() {
   setInterval(function() {
     time = moment();
+
+// RFJ need to reduce this to much less frequently
+    if (weatherLookups > weatherCount) {
+        getWeather();
+        weatherLookups = 0;
+      }
+      else weatherLookups +=1;
+
     if (vverboseDebug) console.log(time," time.hour ",time.hour(), 
       " time.minute ", time.minute(),
       " darknight.hour ", darknight.hour(),
@@ -173,11 +188,38 @@ if ( (((time.minute() >= night.minute()) && (time.hour() == night.hour()))  ||  
 // Display and then store record in the remote datastore and/or mqtt server
 // of how long the alarm was ringing before it was turned off
 function logging(duration) {
-  console.log(time," Time to log something:" + duration);
+  console.log(time," Time to log something:");
 
-  var payload = { value: duration };
+  var payload = { 
+                  pTime: time,
+                  pDark: isDark,
+                  pCurfew: isCurfew,
+                  pLightOn: myLightOn,
+                  pTemp: tempF
+                };
   datastore.log(config, payload);
   mqtt.log(config, payload);
+}
+
+// Call the remote Weather Underground API to check the weather conditions
+// change the LOCATION variable to set the location for which you want.
+//
+function getWeather() {
+  if (!config.WEATHER_API_KEY) { return; }
+
+  var url = "http://api.wunderground.com/api/";
+
+  url += config.WEATHER_API_KEY;
+  url += "/conditions/q/CA/" + config.LOCATION + ".json";
+
+  function display(err, res) {
+    if (err) { return console.error("unable to get weather data", res.text); }
+    var conditions = res.body.current_observation.weather;
+    console.log(time, "forecast: ", conditions);
+//    board.message(conditions, 1);
+  }
+
+  request.get(url).end(display);
 }
 
 var tempF = 999.9;
@@ -345,13 +387,13 @@ app.get('/', function (req, res) {
    night = moment();
    morning = moment();
 
-    night.hour(+params.nighthour);
-    night.minute(+params.nightminute);
+   night.hour(+params.nighthour);
+   night.minute(+params.nightminute);
 
-    morning.hour(+params.morninghour);
-    morning.minute(+params.morningminute);
-    morning.add(1, "day");
-    index(res);
+   morning.hour(+params.morninghour);
+   morning.minute(+params.morningminute);
+   morning.add(1, "day");
+   index(res);
 });
 
 app.get('/*.css', function (req, res) {
@@ -370,9 +412,11 @@ if (verboseDebug) console.log("Entering app.get BulbOff");
 });
 
 function json(req, res) {
-if (verboseDebug) console.log(time," Entering json req res"); 
+if (verboseDebug) console.log(time," Entering json req res",req, res); 
 
 // if no values are entered default to 11pm, 5am with 1 minute so I can recognize default
+//
+// rJF need better way to say time is not valid and set it to default
 //
 if ((night.hour() == 0)  || (morning.hour() == 0 )) { return res.json({ nighthour: 23, nightminute: 1, morninghour: 5, morningminute: 1 }); };
 
@@ -411,6 +455,7 @@ mySocket.on('myLightToggle', function(data, confirmation) {
     else console.log(time," In server mySocket.emit reload FAILED ",retVal);
 });
 });
+
 
 mySocket.on('myLightOn', function(data, confirmation) {
     console.log(time," in server mySocket.on got myLightOn message ",data);
