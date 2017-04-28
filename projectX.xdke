@@ -32,8 +32,8 @@
         "name": "app.json"
       },
       "config.json": {
-        "previousModTime": 1484424862000,
-        "modified": 1484424862000,
+        "previousModTime": 1492856412000,
+        "modified": 1492856412000,
         "seen": true,
         "name": "config.json"
       },
@@ -62,14 +62,14 @@
         "name": "icon.png"
       },
       "index.html": {
-        "previousModTime": 1492149618381,
-        "modified": 1492149618381,
+        "previousModTime": 1493318948000,
+        "modified": 1493318948000,
         "seen": true,
         "name": "index.html"
       },
       "index.js": {
-        "previousModTime": 1492198932128,
-        "modified": 1492198932128,
+        "previousModTime": 1493350926028,
+        "modified": 1493350926028,
         "seen": true,
         "name": "index.js"
       },
@@ -170,8 +170,8 @@
         "name": "projectX.xdk"
       },
       "projectX.xdke": {
-        "previousModTime": 1492199080606,
-        "modified": 1492199080606,
+        "previousModTime": 1493350932890,
+        "modified": 1493350932890,
         "seen": true,
         "name": "projectX.xdke"
       }

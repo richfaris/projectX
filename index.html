@@ -3,12 +3,12 @@
   <head>
     <title>projectMaui</title> 
     <link rel="stylesheet" href="styles.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" >
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   </head>
   <body>
     <div class="container">
       <h2 class="title">projectMaui</h2>
-      <form>        
+      <form>  
         <div class="row">
           <div class="col-xs-6">
               <input class="btn btn-success btn-sm" onclick="hisLightToggle()" value="hisLight"></div>
@@ -64,10 +64,19 @@
                 <tr>
                   <td>MyIpAddress</td>
                   <td>ipNowXYZZY</td>
-                </tr>             
+                </tr>      
+                <tr>
+                  <td>isCurfew</td>
+                  <td>isCurfewXYZZY</td>
+                </tr>    
+                <tr>
+                  <td>isDark</td>
+                  <td>isDarkXYZZY</td>
+                </tr>    
               </tbody>
             </table>
     </div>
+
 <pre class="pre-scrollable" id="log"></pre>
 <script src="/socket.io/socket.io.js"></script>
 <script>
@@ -77,6 +86,7 @@ var   nighthour = document.getElementById("nighthour"),
       morninghour = document.getElementById("morninghour"),
       morningminute = document.getElementById("morningminute");
       
+
     (function () {
     var old = console.log;
     var logger = document.getElementById('log');
@@ -93,7 +103,7 @@ var   nighthour = document.getElementById("nighthour"),
     })();
 
 
-     function option(num) {
+function option(num) {
         var opt = document.createElement("option");
         opt.setAttribute("value", num);
         opt.text = num.toString();
@@ -162,12 +172,14 @@ function myLightToggle() {
 });
 }
 
-// implement button press
+
 function hisLightToggle() {
-  console.log("entering hisLightToggle client not implemented yet");
+  console.log("entering hisLightToggle client");
   hisSocket.emit('myLightToggle', { myLightToggle: 'toggle' }, function(confData) {
-  if (confData) console.log("In client Browser Return  socket.emit status from myLightToggle ",confData);
+  if (confData) console.log("In client Browser Return socket.emit status from myLightToggle ",confData);
      else console.log("In client Return socket.emit status for myLightToggle FAIL ",confData);
+       console.log("leaving hisLightToggle client");
+
 });
 };
 
