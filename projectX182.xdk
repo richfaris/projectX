@@ -1,0 +1,29 @@
+{
+  "project": {
+    "creationData": {
+      "type": "Import",
+      "projectTypeName": "com.intel.xdk.projecttype.iotapp",
+      "src": "",
+      "projectGuid": "1bb9ff5c-e445-4229-9713-cb44c3a6b1fb",
+      "lastModifiedDate": 1484423701313,
+      "creationDate": 1484423701216
+    },
+    "testDirectory": "test",
+    "projectTags": [],
+    "projectFiles": {},
+    "projectDirectories": {
+      "xdk": {
+        "settings": {
+          "project": {
+            "XDK-generated": "true"
+          }
+        }
+      }
+    },
+    "buildConfigurations": {},
+    "serviceMethods": [],
+    "sourceDirectory": "",
+    "startFile": "main.js",
+    "projectSettingsVersion": "3.0.0"
+  }
+}
