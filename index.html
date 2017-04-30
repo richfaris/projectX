@@ -8,7 +8,7 @@
   <body>
     <div class="container">
       <h2 class="title">projectMaui</h2>
-      <form>  
+      <form>
         <div class="row">
           <div class="col-xs-6">
               <input class="btn btn-success btn-sm" onclick="hisLightToggle()" value="hisLight"></div>
@@ -152,8 +152,8 @@ function option(num) {
   
 curfew_main();
 
-var mySocket = io('http://192.168.1.61:3000');
-var hisSocket = io('http://192.168.1.182:3000');
+var mySocket = io('http://192.168.1.182:3000');
+var hisSocket = io('http://192.168.1.61:3000');
 //  var currentTemp;
   
 mySocket.on('reload', function (data,confirmation) {
@@ -172,16 +172,14 @@ function myLightToggle() {
 });
 }
 
-
 function hisLightToggle() {
   console.log("entering hisLightToggle client");
   hisSocket.emit('myLightToggle', { myLightToggle: 'toggle' }, function(confData) {
   if (confData) console.log("In client Browser Return socket.emit status from myLightToggle ",confData);
      else console.log("In client Return socket.emit status for myLightToggle FAIL ",confData);
        console.log("leaving hisLightToggle client");
-
-});
-};
+});  // end hissocket.emit toggle
+};   // end hislighttoggle
 
 </script>
 </body>

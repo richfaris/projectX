@@ -67,7 +67,11 @@ function same(a, b) { return a.isSame(b, "second"); }
 
 var night, morning;
 night = moment();
+night.hour(23);
+night.minute(1);
 morning = moment();
+morning.hour(4);
+morning.minute(1);
 
 // define dark times
 // replace this with calls to weather.com to get sunset and sunrise...
@@ -75,11 +79,11 @@ morning = moment();
 //
 var darknight = moment();
 darknight.hour(18);
-darknight.minute(0);
+darknight.minute(1);
 var darkmorning = moment();
-darkmorning.hour(5);
-darkmorning.minute(0);
-darkmorning.add(1, "day");
+darkmorning.hour(7);
+darkmorning.minute(1);
+
 
 var time = moment();
 if (verboseDebug) console.log(time," Initial values for darknight ",darknight," darkmorning ",darkmorning);
@@ -99,7 +103,7 @@ var conditions = "uninit";
 // I need to add a call to other board to get proper state of second light
 var hisLightOn = 0;  
 var hisBoardClient = require("socket.io-client");
-var hisSocket = hisBoardClient.connect("http://192.168.1.182:3000");
+var hisSocket = hisBoardClient.connect("http://192.168.1.61:3000");
 
 
 // get my ip address
@@ -145,12 +149,19 @@ function getWeather() {
 // RJF consider adding testability logic so I can run unit tests
 
 
-var chatterCount = 5, weatherCount = 900000, reads = 0, weatherLookups = 0, isCurfew = false, isDark = false;
-var darkString = "", curfewString = " ";
+var chatterCount = 200, weatherCount = 900000, reads = 0, weatherLookups = 0, isCurfew = false, isDark = false;
+var darkString = "", curfewString = "";
 var line2;
+
+// this is the main loop of the program that checks the sensors and takes action, updates the screen
+// RJF consider going in and checking status more carefully on all calls
+// RJF consider adding testability logic so I can run unit tests
+
 // 900,000 is one weather lookup every 15 minutes
 // 300 is 60seconds
 getWeather();
+if (verboseDebug) console.log(time, "Got first weather report: conditions are: ",conditions);
+
 function startClockLoop() {
   setInterval(function() {
     time = moment();
@@ -190,24 +201,28 @@ if ( (((time.minute() >= night.minute()) && (time.hour() == night.hour()))  ||  
 // RJF maybe a notification of isDark or isCurfew would help, even a Dd Cc kind of shortcut
 
 
-    if (isDark) { darkString = "D" } else {darkString = "d"};
-    if (isCurfew) {curfewString = "C" } else {curfewString = "c"};
+    if (isDark)   { darkString = "D" } else {darkString = "d" };
+    if (isCurfew) { curfewString = "C" } else {curfewString = "c" };
 
-    var c1 = conditions.substr(1,9); // substring(conditions, 1, 9);
+    var c1 = conditions.substr(0,9); // substring(conditions, 1, 9);
     line2 = c1+" "+darkString+" "+ curfewString;
+
+
     board.message("T "+time.format("h:mm:ss A"),0);
     board.message(line2,1);
     mySWNew = mySW.read();
     reads+=1;
     if (verboseDebug && (reads == chatterCount)) {
-       console.log(time," In startClockLoop: switch mySWNew ", mySWNew, " mySWState ", mySWState," Curfews ", night, morning, " darktimes ", darknight, darkmorning, " isDark ",isDark, " isCurfew ", isCurfew);
-       reads = 0; };
+       console.log(time," In startClockLoop: mySWNew ", mySWNew, " mySWState ", mySWState," Curfews ", night, morning, " darktimes ", darknight, darkmorning, " isDark ",isDark, " isCurfew ", isCurfew);
+       reads = 0; 
+       };
+
 
 
 // here is the switch reading code.  I'm going to change it to a 1 is up and 0 is down logic.  to a three way switch logic
 //
     if (mySWNew != mySWState) {
-      myLightOn = !myLightOn;
+         myLightOn = !myLightOn;
          if (!myLightOn) 
             { myLight.write(0); board.color("red"); myLightOn = false;
             hisSocket.emit('myLightOff', { myLightOff: 'XYZZY' }, function(confData) {
@@ -220,9 +235,9 @@ if ( (((time.minute() >= night.minute()) && (time.hour() == night.hour()))  ||  
             hisSocket.emit('myLightOn', { myLightOn: 'XYZZY' }, function(confData) {
             if (confData) console.log(time, "Tell him to turn on his light ",confData);
             else console.log(time, "Telling him to turn on his light: myLightOn FAIL ",confData);
-          }); // end of emit
-        };   // end of turning on lights
-    };
+            }); // end of emit
+            };   // end of turning on lights
+    }; // end of checking for switch change
     mySWState = mySWNew;
 }, 200 );
 }  // end startClockLoop 
@@ -243,6 +258,25 @@ function logging(duration) {
   mqtt.log(config, payload);
 }
 
+// Call the remote Weather Underground API to check the weather conditions
+// change the LOCATION variable to set the location for which you want.
+//
+function getWeather() {
+  if (!config.WEATHER_API_KEY) { return; }
+
+  var url = "http://api.wunderground.com/api/";
+
+  url += config.WEATHER_API_KEY;
+  url += "/conditions/q/CA/" + config.LOCATION + ".json";
+
+  function display(err, res) {
+    if (err) { return console.error("unable to get weather data", res.text); }
+    conditions = res.body.current_observation.weather;
+    console.log(time, "forecast: ", conditions);
+  }
+
+  request.get(url).end(display);
+}
 
 
 var tempF = 999.9;
@@ -267,8 +301,6 @@ var myTemperatureInterval = setInterval( function () {
 }, 5000);
 }  // end startTempSensor
 
-var previousTime = moment();
-var myProximityInterval;
 
 function startDistanceSensor() {
 console.log(time," Enabling distance sensor...");
@@ -277,20 +309,19 @@ var sensor = new ultrasonic.GroveUltraSonic(7);
 var distance;
 var confData;
 
-    myProximityInterval = setInterval(function()  {
+var myProximityInterval = setInterval(function()  {
 var travelTime = sensor.getDistance();
 
-if ((travelTime > 0)) {
-    distance = (travelTime / 29 / 2).toFixed(3);
-      if ((distance < 243.84) && (ipAddress == "192.168.1.182") && (!isFlashing) ) {
-             if (verboseDebug) 
-        console.log(time," Ultrasonic triggered Time: ",time, " previousTime: ", previousTime, " diff: ", 
-            time.diff(previousTime), " distance: ", distance," isFlashing ",isFlashing," myLightOn ", myLightOn, " isDark ",isDark, " isCurfew ", isCurfew);
-                flashFive(); 
-                flashHisFive(); 
-      previousTime = time;
-      }   
- }  // end traveltime > 0
+if (travelTime > 0) {
+      distance = (travelTime / 29 / 2).toFixed(3);
+
+      if ((distance < 243.84) && (ipAddress == "192.168.1.182") && (!isFlashing) && (isDark) ) {
+            if (verboseDebug) console.log(time," Ultrasonic triggered Time: ",time, 
+             " distance: ", distance," isFlashing ",isFlashing," myLightOn ", myLightOn, " isDark ",isDark, " isCurfew ", isCurfew);
+      flashFive(); 
+      flashHisFive(); 
+    }   // sidtance less than threshhold
+    }   // traveltime >0 
 }   // end setInterval
 , 200); 
 }  // end startDistanceSensor
@@ -300,7 +331,7 @@ hisSocket.emit('flashMyFive', { flashMyFive: 'DoFlashOrElse' }, function(confDat
    if (confData) console.log(time," In server, flashMyFive ",confData);
       else console.log(time," In server flashMyFive FAIL ",confData);
    });
-}
+} // end flashHisFive
 
 function flashLCD() {
  var i; 
@@ -314,7 +345,7 @@ function flashLCD() {
         console.log(time," Im red i= ",i);        
   }, (i*5000)+2500);
 }  // end i loop 
-}
+}  // end flashLCD
 
 function flashFive() {
 
@@ -406,21 +437,11 @@ app.get('/', function (req, res) {
 // then make morning tomorrow morning
 // then fill in the actual hours.  default of 11,1 and 5,1 or what comes from the form
 //
-   night = moment();
-   night.hour(23);
-   night.minute(1);
-   morning = moment();
-   morning.hour(5);
-   morning.minute(1);
-
    night.hour(+params.nighthour);
    night.minute(+params.nightminute);
-
    morning.hour(+params.morninghour);
    morning.minute(+params.morningminute);
-   morning.add(1, "day");
    index(res);
-   if (verboseDebug) console.log(time," Entering app.get slash night get curfew ", night, " morning ",morning);
 
 });
 
@@ -440,26 +461,27 @@ if (verboseDebug) console.log("Entering app.get BulbOff");
 });
 
 function json(req, res) {
+
 if (verboseDebug) console.log(time," Entering json "); 
 
 // if no values are entered default to 11pm, 5am with 1 minute so I can recognize default
-//
 // rJF need better way to say time is not valid and set it to default
 //
-if ((night.hour() == 0)  || (morning.hour() == 0 )) { return res.json({ nighthour: 22, nightminute: 2, morninghour: 5, morningminute: 2 }); };
+
+if ((night.hour() == 0)) { return res.json({ nighthour: 22, nightminute: 2, morninghour: 4, morningminute: 2 }); };
 
     res.json({
-      nighthour: night.hour() || 0,
-      nightminute: night.minute() || 0, 
-      morninghour: morning.hour() || 0,
-      morningminute: morning.minute() || 0
+      nighthour: night.hour() || 22,
+      nightminute: night.minute() || 3, 
+      morninghour: morning.hour() || 4,
+      morningminute: morning.minute() || 3
     });
 
     if (verboseDebug) console.log(time," in res.json night.hour ", night.hour() );
     if (verboseDebug) console.log(time," in res.json night.minute ", night.minute() );
     if (verboseDebug) console.log(time," in res.json morning.hour ", morning.hour() );
     if (verboseDebug) console.log(time," in res.json morning.minute ", morning.minute() );
-};
+}; // end function json
 
 app.get('/curfew.json', json);
 
@@ -482,13 +504,12 @@ mySocket.on('myLightToggle', function(data, confirmation) {
     mySocket.emit('reload', 'becauseISaidSo', function(retVal) {
     if (retVal) console.log(time," In server mySocket.emit reload worked ",retVal);
     else console.log(time," In server mySocket.emit reload FAILED ",retVal);
-});
-});
+}); // end mysocket.emit
+}); // end mysocket.on toggle
 
 
 mySocket.on('myLightOn', function(data, confirmation) {
     console.log(time," in server mySocket.on got myLightOn message ",data);
-
     myLightOn = 1;  
     console.log(time," In server mySocket.on, myLight ", myLightOn);
     myLight.write(1);
@@ -512,7 +533,8 @@ mySocket.on('flashMyFive', function(data, confirmation) {
     if (isDark) flashFive(); else console.log(time," flashFive requested from partner, but it's not dark ");
 });
 
-
+}); // end of io.on
+};  // end of doserver
 
 function main() {
 console.log(time," project Maui Starting...")
@@ -521,7 +543,6 @@ console.log(time," project Maui Starting...")
 //   process.argv.forEach(function (val, index, array) {
 //     console.log(index + ': ' + val);
 // });
-
 
   board.stopBuzzing();
   board.setupEvents();
@@ -533,8 +554,6 @@ console.log(time," project Maui Starting...")
     console.log(time," In main init myLight ", myLightOn);
     myLight.write(0);
     board.color("red");
-
-
 
   startClockLoop();
   startTempSensor();
