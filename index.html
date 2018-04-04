@@ -152,8 +152,17 @@ function option(num) {
   
 curfew_main();
 
-var mySocket = io('http://192.168.1.182:3000');
-var hisSocket = io('http://192.168.1.61:3000');
+var myIp = "ipNowXYZZY";
+var hisIp = "";
+if (myIp == "192.168.1.61") 
+   hisIp = "192.168.1.182";
+	 else hisIp = "192.168.1.61";
+	 
+if (vverbose) console.log(time,"myIp "+myIp+" hisIp "+hisIp);
+    
+
+var mySocket = io("http://"+myIp+":3000");
+var hisSocket = io("http://"+hisIp+":3000");
 //  var currentTemp;
   
 mySocket.on('reload', function (data,confirmation) {

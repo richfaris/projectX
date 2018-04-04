@@ -1,4 +1,22 @@
-# Alarm clock in JavaScript*
+# Home Automation Application for Intel Edison
+# 
+# Rich Faris rich@liquidhw.com
+# This application utilizes a pair of Intel Edison systems, one
+# inside and one outside of the house.
+#
+# the outside system has an ultrasonic sensor pointed at the front door, and 
+# when it sees motion it turns on the lights if the time is "after dark"
+# 
+# both systems are reading the actual light switch as an input.  The light switch
+# is actually only switching 5v once it is rewired.  Then the system reads the value out
+# of the switch and it turns on the 120V using a relay
+#
+# 
+# now that the intel development environment is unsupported (XDK) it would be easier
+# to just use git to bring the code into the Edison directly for development there
+#
+# some of this documentation is outdated as it refers to the XDK systems.
+
 
 ## Introduction
 
@@ -47,19 +65,6 @@ DFRobot\* Starter Kit for Intel® Edison, containing:
 4. [Rotary Dial]()
 5. [LCD Keypad Shield](http://iotdk.intel.com/docs/master/upm/node/classes/sainsmartks.html)
 
-## Software requirements
-
-1. Intel® XDK IoT Edition
-2. Microsoft\* Azure\*, IBM\* Bluemix\*, or AWS account (optional)
-3. Weather Underground\* API key (optional)
-
-### How to set up
-
-To begin, clone the **How-To Intel IoT Code Samples** repository with Git\* on your computer as follows:
-
-    $ git clone https://github.com/intel-iot-devkit/how-to-code-samples.git
-
-To download a .zip file, in your web browser go to <a href="https://github.com/intel-iot-devkit/how-to-code-samples">https://github.com/intel-iot-devkit/how-to-code-samples</a> and click the **Download ZIP** button at the lower right. Once the .zip file is downloaded, uncompress it, and then use the files in the directory for this example.
 
 ## Adding the program to Intel® XDK IoT Edition
 
@@ -119,41 +124,7 @@ You need to have a Grove\* Shield connected to an Arduino\*-compatible breakout 
 
 4. Plug one end of a Grove\* cable into the Grove RGB LCD, and connect the other end to any of the I2C ports on the Grove\* Shield.
 
-### Connecting the DFRobot\* sensors
 
-![](./../../images/js/alarm-clock-dfrobot.jpg)
-
-You need to have a LCD Keypad Shield connected to an Arduino\*-compatible breakout board to plug all the DFRobot\* devices into the LCD Keypad Shield.
-
-1. Plug one end of a DFRobot\* cable into the Buzzer, and connect the other end to the A1 port on the LCD Keypad Shield.
-
-2. Plug one end of a DFRobot\* cable into the Button, and connect the other end to the A2 port on the LCD Keypad Shield.
-
-3. Plug one end of a DFRobot\* cable into the Rotary Analog Sensor, and connect the other end to the A3 port on the LCD Keypad Shield.
-
-### Manual Intel® Edison setup
-
-If you're running this code on your Intel® Edison board manually, you need to install some dependencies.
-
-To obtain the Node.js\* modules needed for this example to execute on the Intel® Edison board, run the following command:
-
-```
-npm install
-```
-
-### Intel® IoT Gateway setup
-
-You can run this example using an Intel® IoT Gateway connected to an Arduino\*/Genuino\* 101.
-
-Make sure your Intel® IoT Gateway is setup using Intel® IoT Gateway Software Suite, by following the directions on the web site here:
-
-https://software.intel.com/en-us/getting-started-with-intel-iot-gateways-and-iotdk
-
-You must install the Intel® XDK on the Intel® IoT Gateway, by following the directions on the above link, under the section "Connecting to the Intel® XDK".
-
-The Arduino\*/Genuino\* 101 needs to have the Firmata\* firmware installed. If you have IMRAA installed on your gateway, this will be done automatically. Otherwise, install the StandardFirmata or ConfigurableFirmata sketch manully on to your Arduino\*/Genuino\* 101.
-
-You will also need to configure the `config.json` in the example to use the Arduino\*/Genuino\* 101. See the section "Configuring the example" below.
 
 ### Weather Underground\* API key
 
@@ -242,39 +213,7 @@ For information on how to configure the example for the optional Microsoft\* Azu
 
 [https://github.com/intel-iot-devkit/intel-iot-examples-mqtt/](https://github.com/intel-iot-devkit/intel-iot-examples-mqtt/)
 
-## Running the program using Intel® XDK IoT Edition
 
-When you're ready to run the example, make sure you saved all the files.
-
-![](./../../images/js/xdk-upload.png)
-
-Click the **Upload** icon to upload the files to the Intel® Edison board.
-
-![](./../../images/js/xdk-run.png)
-
-Click the **Run** icon at the bottom of Intel® XDK IoT Edition. This runs the code on the Intel® Edison board.
-
-![](./../../images/js/xdk-upload-run.png)
-
-If you made changes to the code, click **Upload and Run**. This runs the latest code with your changes on the Intel® Edison board.
-
-![](./../../images/js/alarm-clock-output.png)
-
-You will see output similar to the above when the program is running.
-
-## Running the program manually
-
-To run the example manually on the Intel® Edison board, establish an SSH connection to the board and execute the following command:
-
-    node index.js
-
-### Setting the alarm
-
-![](./../../images/js/alarm-clock-web.png)
-
-The alarm is set using a single-page web interface served directly from the Intel® Edison board while the sample program is running.
-
-The web server runs on port `3000`, so if the Intel® Edison board is connected to Wi-Fi* on `192.168.1.13`, the address to browse to if you are on the same network is `http://192.168.1.13:3000`.
 
 ### Determining the Intel® Edison IP address
 

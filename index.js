@@ -103,7 +103,6 @@ var conditions = "uninit";
 // I need to add a call to other board to get proper state of second light
 var hisLightOn = 0;  
 var hisBoardClient = require("socket.io-client");
-var hisSocket = hisBoardClient.connect("http://192.168.1.61:3000");
 
 
 // get my ip address
@@ -120,6 +119,11 @@ var exec = require('child_process').exec;
    ipAddress = stdout.trim();  
    if (verboseDebug) console.log(time," My ip address is " + ipAddress ); 
    });  
+var connectString;
+if (ipAddress == "192.168.1.61" ) 
+    { connectString = "http://192.168.1.182:3000"; } else 
+    { connectString = "http://192.168.1.61:3000" ; }
+var hisSocket = hisBoardClient.connect(connectString);
 
 
 // Call the remote Weather Underground API to check the weather conditions
@@ -201,14 +205,19 @@ if ( (((time.minute() >= night.minute()) && (time.hour() == night.hour()))  ||  
 // RJF maybe a notification of isDark or isCurfew would help, even a Dd Cc kind of shortcut
 
 
-    if (isDark)   { darkString = "D" } else {darkString = "d" };
-    if (isCurfew) { curfewString = "C" } else {curfewString = "c" };
+if (isDark)   { darkString = "D" } else {darkString = "d" };
+if (isCurfew) { curfewString = "C" } else {curfewString = "c" };
 
-    var c1 = conditions.substr(0,9); // substring(conditions, 1, 9);
-    line2 = c1+" "+darkString+" "+ curfewString;
+// add temperature here too
+
+    var c1 = conditions.substr(0,15).replace(/\s+/g, ''); // substring(conditions, 1, 9);
+  //  var c2 =   // how to make a degree character?
+    line2 = c1+" "+darkString+curfewString;
 
 
-    board.message("T "+time.format("h:mm:ss A"),0);
+//    board.message(time.format("h:mm A")+" F"+"\xEF"+tempF.toString().substr(0,4)+"",0);
+    board.message(time.format("h:mm A")+" "+tempF.toString().substr(0,4)+"",0);
+
     board.message(line2,1);
     mySWNew = mySW.read();
     reads+=1;
@@ -216,8 +225,6 @@ if ( (((time.minute() >= night.minute()) && (time.hour() == night.hour()))  ||  
        console.log(time," In startClockLoop: mySWNew ", mySWNew, " mySWState ", mySWState," Curfews ", night, morning, " darktimes ", darknight, darkmorning, " isDark ",isDark, " isCurfew ", isCurfew);
        reads = 0; 
        };
-
-
 
 // here is the switch reading code.  I'm going to change it to a 1 is up and 0 is down logic.  to a three way switch logic
 //
@@ -315,7 +322,7 @@ var travelTime = sensor.getDistance();
 if (travelTime > 0) {
       distance = (travelTime / 29 / 2).toFixed(3);
 
-      if ((distance < 243.84) && (ipAddress == "192.168.1.182") && (!isFlashing) && (isDark) ) {
+      if ((distance < 457.2) && (ipAddress == "192.168.1.182") && (!isFlashing) && (isDark) ) {
             if (verboseDebug) console.log(time," Ultrasonic triggered Time: ",time, 
              " distance: ", distance," isFlashing ",isFlashing," myLightOn ", myLightOn, " isDark ",isDark, " isCurfew ", isCurfew);
       flashFive(); 
@@ -373,7 +380,7 @@ function flashFive() {
       if (isCurfew) { board.color("blue"); }
           else { board.color("red"); }
       });
-   }, 30000);
+   }, 60000);
 }  // end flashfive
 
 
@@ -437,10 +444,21 @@ app.get('/', function (req, res) {
 // then make morning tomorrow morning
 // then fill in the actual hours.  default of 11,1 and 5,1 or what comes from the form
 //
-   night.hour(+params.nighthour);
-   night.minute(+params.nightminute);
-   morning.hour(+params.morninghour);
-   morning.minute(+params.morningminute);
+   if (verboseDebug) console.log(time," Parameters to app.get: #",params,"# length ",params.length);
+ //  if (params.length < 6) {
+ //    night.hour(23);
+ //   night.minute(9);
+//     morning.hour(4);
+//     morning.minute(9);
+  // }
+//   else {
+	night = moment();
+	morning = moment();
+	night.hour(+params.nighthour);
+	night.minute(+params.nightminute);
+  morning.hour(+params.morninghour);
+  morning.minute(+params.morningminute);
+//   }
    index(res);
 
 });
@@ -464,11 +482,24 @@ function json(req, res) {
 
 if (verboseDebug) console.log(time," Entering json "); 
 
+    if (verboseDebug) console.log(time," before in res.json night.hour ", night.hour() );
+    if (verboseDebug) console.log(time," before in res.json night.minute ", night.minute() );
+    if (verboseDebug) console.log(time," before in res.json morning.hour ", morning.hour() );
+    if (verboseDebug) console.log(time," before in res.json morning.minute ", morning.minute() );
+
+
 // if no values are entered default to 11pm, 5am with 1 minute so I can recognize default
 // rJF need better way to say time is not valid and set it to default
 //
 
-if ((night.hour() == 0)) { return res.json({ nighthour: 22, nightminute: 2, morninghour: 4, morningminute: 2 }); };
+if ((night.hour() == 0) || 
+//    (isNaN(night.hour()) || 
+    (night.minute() == 0) 
+//    || 
+//    (isNaN(night.minute())
+      ) 
+      { return res.json({ nighthour: 22, nightminute: 2, morninghour: 4, morningminute: 2 }); };
+
 
     res.json({
       nighthour: night.hour() || 22,
@@ -477,10 +508,10 @@ if ((night.hour() == 0)) { return res.json({ nighthour: 22, nightminute: 2, morn
       morningminute: morning.minute() || 3
     });
 
-    if (verboseDebug) console.log(time," in res.json night.hour ", night.hour() );
-    if (verboseDebug) console.log(time," in res.json night.minute ", night.minute() );
-    if (verboseDebug) console.log(time," in res.json morning.hour ", morning.hour() );
-    if (verboseDebug) console.log(time," in res.json morning.minute ", morning.minute() );
+    if (verboseDebug) console.log(time," after in res.json night.hour ", night.hour() );
+    if (verboseDebug) console.log(time," after in res.json night.minute ", night.minute() );
+    if (verboseDebug) console.log(time," after in res.json morning.hour ", morning.hour() );
+    if (verboseDebug) console.log(time," after in res.json morning.minute ", morning.minute() );
 }; // end function json
 
 app.get('/curfew.json', json);
@@ -550,7 +581,7 @@ console.log(time," project Maui Starting...")
 // need to ensure that at startup both lights are in a known state (off)
 // 
 
-    myLightOn = 0;  
+    myLightOn = 1;  // because it toggles once
     console.log(time," In main init myLight ", myLightOn);
     myLight.write(0);
     board.color("red");
